@@ -1,0 +1,59 @@
+import { SlashCommandBuilder, EmbedBuilder, ChannelType } from 'discord.js'
+import { redColor } from '../../config.js'
+
+export default {
+    data: new SlashCommandBuilder()
+        .setName('channelinfo')
+        .setDescription('Affiche les informations sur le channel choisi')
+        .addChannelOption(option =>
+            option
+                .setName('salon')
+                .setDescription('Le salon à utiliser')
+                .addChannelTypes(ChannelType.GuildText, ChannelType.GuildVoice)
+                .setRequired(true)
+        ),
+
+    async execute(interaction) {
+        try {
+            const channel = interaction.options.getChannel('salon', true)
+
+            const typeMap = {
+                [ChannelType.GuildText]: "Texte",
+                [ChannelType.GuildVoice]: "Vocal",
+                [ChannelType.GuildCategory]: "Catégorie",
+                [ChannelType.GuildStageVoice]: "Stage",
+                [ChannelType.GuildForum]: "Forum",
+                [ChannelType.GuildAnnouncement]: "Annonce",
+                [ChannelType.GuildPublicThread]: "Thread public",
+                [ChannelType.GuildPrivateThread]: "Thread privé",
+            }
+
+            const isVoice = channel.type === ChannelType.GuildVoice
+                ? `> *Membre.s connecté.s: \`${channel.members.size}\`*`
+                : ''
+
+            const embed = new EmbedBuilder()
+                .setTitle('`🪄`〃Channel Information')
+                .setDescription(
+                    `> *Mention: ${channel}*\n` +
+                    `> *Nom: \`${channel.name}\`*\n` +
+                    `> *Id: \`${channel.id}\`*\n` +
+                    `> *Type: \`${typeMap[channel.type] || 'Inconnue'}\`*\n` +
+                    `> *Catégorie: \`${channel.parent ? channel.parent.name : "Aucune Catégorie"}\`*\n` +
+                    `> *NSFW: \`${channel.nsfw ? 'true' : 'false'}\`*\n` +
+                    isVoice
+                )
+                .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
+
+            await interaction.reply({ embeds: [embed] })
+        } catch (err) {
+            const embed = new EmbedBuilder()
+                .setTitle('`❌`〃Error')
+                .setDescription(`> *Une erreur est survenue :*\n\`\`\`${err}\`\`\``)
+                .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
+                .setColor(redColor)
+
+            await interaction.reply({ embeds: [embed], ephemeral: true })
+        }
+    }
+}
