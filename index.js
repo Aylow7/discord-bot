@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
 import { config } from './config.js';
-import { setBotStartTime } from './utils/database.js';
+import { initDatabase, setBotStartTime } from './utils/database.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -123,6 +123,7 @@ client.on('messageCreate', async message => {
 
 const start = async () => {
     try {
+        initDatabase();
         await loadSlashCommands();
         await loadPrefixCommands();
         
