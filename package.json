@@ -1,0 +1,16 @@
+{
+  "name": "discord-bot-utils",
+  "version": "1.0.0",
+  "description": "Bot Discord avec commandes utilitaires en français",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["discord", "bot", "javascript"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
