@@ -3,3 +3,7 @@ node_modules/
 database/config.json
 *.log
 .DS_Store
+.local/
+attached_assets/
+replit.md
+.replit
