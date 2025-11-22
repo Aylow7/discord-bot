@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
 import { add, view, reason, remove } from "../utils/warns.js";
 import { redColor, greenColor } from "../config.js";
-import { incrementCommandCount } from '../utils/database.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -31,7 +30,7 @@ export default {
                .addStringOption(opt => opt.setName('case').setDescription('Numéro du warn à modifier').setRequired(true))
                .addStringOption(opt => opt.setName('newreason').setDescription('Nouvelle raison').setRequired(true))
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+        .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
     async execute(interaction) {
         try {
@@ -43,7 +42,7 @@ export default {
 
             if (!member || !targetMember) {
                 const embed = new EmbedBuilder()
-                    .setTitle('`❌`〃Error')
+                    .setTitle('`❌`〃Erreur')
                     .setDescription(`> *Impossible de trouver le membre ${target.tag}.*`)
                     .setColor(redColor)
                     .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
@@ -53,8 +52,8 @@ export default {
 
             if (member.roles.highest.position <= targetMember.roles.highest.position) {
                 const embed = new EmbedBuilder()
-                    .setTitle('`❌`〃Error')
-                    .setDescription('> *Vous ne pouvez pas gérer les warns d\'un membre ayant un rôle supérieur ou égal au vôtre.*')
+                    .setTitle('`❌`〃Erreur')
+                    .setDescription('> *Vous ne pouvez pas warn/voir/remove/changer le warn d\'un membre ayant un rôle supérieur ou égal au vôtre.*')
                     .setColor(redColor)
                     .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
                 await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -63,13 +62,13 @@ export default {
 
             switch (sub) {
                 case 'add': {
-                    const reasonText = interaction.options.getString('reason', true);
+                    const reason = interaction.options.getString('reason', true);
                     const modId = interaction.user.id;
-                    const caseNum = await add(interaction.guildId, target.id, reasonText, modId);
+                    const caseNum = await add(interaction.guildId, target.id, reason, modId);
 
                     const embed = new EmbedBuilder()
-                        .setTitle('`✅`〃Warn Added')
-                        .setDescription(`> *Warn ajouté à ${target} (\`${target.id}\` | \`${target.tag}\`) !*\n> **Raison :** ${reasonText}`)
+                        .setTitle('`✅`〃Warn ajouté')
+                        .setDescription(`> *Warn ajouté à ${target} (\`${target.id}\` | \`${target.tag}\`) !*\n\`\`\`ansi\n[1;31m[Reason] :[0m ${reason}\n\`\`\``)
                         .setColor(greenColor)
                         .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
 
@@ -88,7 +87,7 @@ export default {
                     await remove(interaction.guildId, target.id, caseNumber);
 
                     const embed = new EmbedBuilder()
-                        .setTitle('`✅`〃Warn Removed')
+                        .setTitle('`✅`〃Warn retiré')
                         .setDescription(`> *Le warn \`n°${caseNumber}\` de ${target} (\`${target.id}\` | \`${target.tag}\`) a été retiré.*`)
                         .setColor(greenColor)
                         .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
@@ -103,8 +102,8 @@ export default {
                     await reason(interaction.guildId, target.id, caseNumber, newReason);
 
                     const embed = new EmbedBuilder()
-                        .setTitle('`✅`〃Reason Changed')
-                        .setDescription(`> *La raison du warn \`n°${caseNumber}\` de ${target} (\`${target.id}\` | \`${target.tag}\`) a été modifiée.*\n> **Nouvelle raison :** ${newReason}`)
+                        .setTitle('`✅`〃Raison modifiée')
+                        .setDescription(`> *La raison du warn \`n°${caseNumber}\` de ${target} (\`${target.id}\` | \`${target.tag}\`) a été modifiée.*\n\`\`\`ansi\n[1;32m[New Reason] :[0m ${newReason}\n\`\`\``)
                         .setColor(greenColor)
                         .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
 
@@ -112,12 +111,11 @@ export default {
                     break;
                 }
             }
-            incrementCommandCount();
         } catch (error) {
             console.error('Erreur dans la commande warn:', error);
             const embed = new EmbedBuilder()
-                .setTitle('`❌`〃Error')
-                .setDescription(`> *Une erreur est survenue : ${error.message}*`)
+                .setTitle('`❌`〃Erreur')
+                .setDescription(`> *Une erreur est survenue :*\n\`\`\`ansi\n[1;31m${error}[0m\n\`\`\``)
                 .setColor(redColor)
                 .setFooter({ text: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() });
 

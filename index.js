@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
-import { config } from './config.js';
+import { config, token } from './config.js';
 import { initDatabase, setBotStartTime } from './utils/database.js';
 import fs from 'fs';
 import path from 'path';
@@ -54,7 +54,7 @@ const registerSlashCommands = async () => {
         commands.push(command.data.toJSON());
     });
 
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const rest = new REST({ version: '10' }).setToken(token);
 
     try {
         console.log('🔄 Démarrage du rechargement des commandes slash...');
@@ -127,14 +127,13 @@ const start = async () => {
         await loadSlashCommands();
         await loadPrefixCommands();
         
-        const token = process.env.DISCORD_TOKEN;
         if (!token) {
             console.error('❌ ERREUR: Le token Discord n\'est pas défini dans les variables d\'environnement.');
             console.error('⚠️  Veuillez définir la variable d\'environnement DISCORD_TOKEN');
             process.exit(1);
         }
         
-        await client.login(token);
+        await client.login(token || process.env.DISCORD_TOKEN);
     } catch (error) {
         console.error('❌ Erreur lors du démarrage du bot:', error);
         process.exit(1);
