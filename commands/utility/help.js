@@ -26,6 +26,7 @@ const categoryEmojis = {
 // Charger les commandes depuis les fichiers
 const loadCategories = async () => {
     const categories = {};
+    const stats = { totalCommands: 0, totalSubcommands: 0 };
     const commandsPath = path.join(__dirname, '../../commands');
 
     const loadCommandsRecursive = async (dir) => {
@@ -60,15 +61,19 @@ const loadCategories = async () => {
 
                             if (hasSubcommands) {
                                 // Charger les subcommands
+                                let subCount = 0;
                                 for (const opt of options) {
                                     if ((opt.type === 1 || opt.type === 2) && opt.name) {
                                         const subDesc = opt.description || 'Pas de description';
                                         categories[categoryName].push(`\`/${cmdName} ${opt.name}\` - ${subDesc}`);
+                                        subCount++;
                                     }
                                 }
+                                stats.totalSubcommands += subCount;
                             } else {
                                 // Commande simple
                                 categories[categoryName].push(`\`/${cmdName}\` - ${cmdDesc}`);
+                                stats.totalCommands++;
                             }
                         }
                     } catch (error) {
@@ -80,7 +85,7 @@ const loadCategories = async () => {
     };
 
     await loadCommandsRecursive(commandsPath);
-    return categories;
+    return { categories, stats };
 };
 
 const categoryNames = Object.keys(categoryEmojis).map(k => categoryEmojis[k]);
@@ -111,7 +116,7 @@ export default {
         try {
             await interaction.deferReply();
 
-            const categories = await loadCategories();
+            const { categories, stats } = await loadCategories();
             const selectedCategory = interaction.options.getString('categorie');
 
             if (selectedCategory) {
@@ -131,7 +136,7 @@ export default {
                 const embed = new EmbedBuilder()
                     .setTitle('`📚`〃Help - Toutes les Commandes')
                     .setDescription(
-                        `> **${Object.keys(categories).length} catégories** | **${totalCommands} commandes slash**\n\n` +
+                        `> **${Object.keys(categories).length} catégories** | **${stats.totalCommands} commandes** | **${stats.totalSubcommands} subcommands**\n\n` +
                         `> **Utilisation :**\n` +
                         `> • Slash : \`/commande\`\n` +
                         `> • Prefix : \`+commande\` (même nom)\n\n` +

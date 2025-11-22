@@ -1,5 +1,4 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
-import { Player } from 'discord-player';
+import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
 import { config, token } from './config.js';
 import { initDatabase, setBotStartTime } from './utils/database.js';
 import fs from 'fs';
@@ -14,8 +13,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -25,7 +23,7 @@ client.prefixCommands = new Collection();
 const loadSlashCommands = async () => {
     const commandsPath = path.join(__dirname, 'commands');
     
-    const loadCommandsRecursive = async (dir) => {
+    async function loadDir(dir) {
         const items = fs.readdirSync(dir);
         
         for (const item of items) {
@@ -33,26 +31,28 @@ const loadSlashCommands = async () => {
             const stat = fs.statSync(itemPath);
             
             if (stat.isDirectory()) {
-                // Charger récursivement les sous-dossiers
-                await loadCommandsRecursive(itemPath);
+                await loadDir(itemPath);
             } else if (item.endsWith('.js')) {
-                // Charger les fichiers JS
-                const command = await import(`file://${itemPath}`);
-                if (command.default && command.default.data && command.default.execute) {
-                    client.slashCommands.set(command.default.data.name, command.default);
-                    console.log(`✅ Slash command chargée: ${command.default.data.name}`);
+                try {
+                    const command = await import(`file://${itemPath}`);
+                    if (command.default && command.default.data && command.default.execute) {
+                        client.slashCommands.set(command.default.data.name, command.default);
+                        console.log(`✅ Slash command chargée: ${command.default.data.name}`);
+                    }
+                } catch (e) {
+                    console.error(`❌ Erreur ${item}:`, e.message);
                 }
             }
         }
-    };
+    }
     
-    await loadCommandsRecursive(commandsPath);
+    await loadDir(commandsPath);
 };
 
 const loadPrefixCommands = async () => {
     const commandsPath = path.join(__dirname, 'prefixCommands');
     
-    const loadCommandsRecursive = async (dir) => {
+    async function loadDir(dir) {
         const items = fs.readdirSync(dir);
         
         for (const item of items) {
@@ -60,41 +60,85 @@ const loadPrefixCommands = async () => {
             const stat = fs.statSync(itemPath);
             
             if (stat.isDirectory()) {
-                // Charger récursivement les sous-dossiers
-                await loadCommandsRecursive(itemPath);
+                await loadDir(itemPath);
             } else if (item.endsWith('.js')) {
-                // Charger les fichiers JS
-                const command = await import(`file://${itemPath}`);
-                if (command.default && command.default.name && command.default.execute) {
-                    client.prefixCommands.set(command.default.name, command.default);
-                    console.log(`✅ Prefix command chargée: ${command.default.name}`);
+                try {
+                    const command = await import(`file://${itemPath}`);
+                    if (command.default && command.default.name && command.default.execute) {
+                        client.prefixCommands.set(command.default.name, command.default);
+                        console.log(`✅ Prefix command chargée: ${command.default.name}`);
+                    }
+                } catch (e) {
+                    console.error(`❌ Erreur ${item}:`, e.message);
                 }
             }
         }
-    };
+    }
     
-    await loadCommandsRecursive(commandsPath);
+    await loadDir(commandsPath);
 };
 
 const loadEvents = async () => {
     const eventsPath = path.join(__dirname, 'events');
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-    
+
     for (const file of eventFiles) {
-        const filePath = path.join(eventsPath, file);
-        const event = await import(`file://${filePath}`);
-        
-        if (event.default && event.default.name && event.default.execute) {
-            if (event.default.once) {
-                client.once(event.default.name, (...args) => event.default.execute(...args, client));
-                console.log(`✅ Événement chargé (une fois): ${event.default.name}`);
-            } else {
-                client.on(event.default.name, (...args) => event.default.execute(...args, client));
+        try {
+            const event = await import(`file://${path.join(eventsPath, file)}`);
+            if (event.default && event.default.name && event.default.execute) {
+                if (event.default.once) {
+                    client.once(event.default.name, (...args) => event.default.execute(...args, client));
+                } else {
+                    client.on(event.default.name, (...args) => event.default.execute(...args, client));
+                }
                 console.log(`✅ Événement chargé: ${event.default.name}`);
             }
+        } catch (e) {
+            console.error(`❌ Erreur ${file}:`, e.message);
         }
     }
 };
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.slashCommands.get(interaction.commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(`Erreur lors de l'exécution de ${interaction.commandName}:`, error);
+        const errorMessage = { 
+            content: '> *Une erreur est survenue lors de l\'exécution de cette commande.*', 
+            ephemeral: true 
+        };
+        
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(errorMessage);
+        } else {
+            await interaction.reply(errorMessage);
+        }
+    }
+});
+
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+    if (!message.content.startsWith(config.prefix)) return;
+
+    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    const command = client.prefixCommands.get(commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(message, args);
+    } catch (error) {
+        console.error(`Erreur lors de l'exécution de ${commandName}:`, error);
+        await message.channel.send('> *Une erreur est survenue lors de l\'exécution de cette commande.*');
+    }
+});
 
 const start = async () => {
     try {
