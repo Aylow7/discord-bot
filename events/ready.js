@@ -1,8 +1,8 @@
 import { setBotStartTime } from '../utils/database.js';
 import { REST, Routes } from 'discord.js';
-import { token } from '../config.js';
+import { token, guildId } from '../config.js';
 
-const GUILD_ID = '1439665005502136320';
+const GUILD_ID = guildId;
 
 export default {
     name: 'ready',
